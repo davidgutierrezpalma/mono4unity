@@ -57,36 +57,6 @@ public class Mono4UnityEditorWindow : EditorWindow {
 	#endregion
 
 	#region protected instance methods
-	protected virtual CompilerResults CompileDll(
-		string sourceFolder,
-		string dllFilename,
-		IEnumerable<string> referencedAssemblies
-	){
-		if (dllFilename != null) {
-			dllFilename = new FileInfo(dllFilename).FullName;
-		}
-
-		CSharpCodeProvider provider = new CSharpCodeProvider();
-		CompilerParameters parameters = new CompilerParameters();
-		parameters.IncludeDebugInformation = false;
-		parameters.GenerateExecutable = false;
-		parameters.GenerateInMemory = false;
-		parameters.OutputAssembly = dllFilename;
-
-		if (referencedAssemblies != null){
-			foreach (string assembly in referencedAssemblies){
-				if (!string.IsNullOrEmpty(assembly)){
-					parameters.ReferencedAssemblies.Add(assembly);
-				}
-			}
-		}
-
-		return provider.CompileAssemblyFromFile(
-			parameters, 
-			this.GetSourceFiles(sourceFolder)
-		);
-	}
-
 	protected string[] GetSourceFiles(string sourceFolder){
 		DirectoryInfo dir = new DirectoryInfo(sourceFolder);
 		List<string> files = new List<string> ();
@@ -110,7 +80,7 @@ public class Mono4UnityEditorWindow : EditorWindow {
 		}else{
 			GUILayout.BeginHorizontal ();
 			GUILayout.Label ("Build Path:");
-			this.BuildPath = GUILayout.TextField (this.BuildPath);
+			this.BuildPath = GUILayout.TextField (this.BuildPath != null ? this.BuildPath : string.Empty);
 
 			if (GUILayout.Button ("+")) {
 				this.BuildPath = EditorUtility.SaveFolderPanel(
@@ -146,17 +116,18 @@ public class Mono4UnityEditorWindow : EditorWindow {
 					);
 
 					Debug.Log("Generating DLL...");
-					CompilerResults results = this.CompileDll(
-						Mono4UnityEditorWindow.MonoPath,
-						monoDll,
-						new string[]{"System.dll", "mscorlib.dll"}
+					string[] results = EditorUtility.CompileCSharp(
+						this.GetSourceFiles(Mono4UnityEditorWindow.MonoPath),
+						new string[]{"System.dll", "mscorlib.dll"},
+						new string[0],
+						new FileInfo(monoDll).FullName
 					);
 					
-					foreach (CompilerError error in results.Errors){
-						if (error.IsWarning){
-							warnings.AppendLine(error.ToString());
-						}else{
-							errors.AppendLine(error.ToString());
+					foreach (string result in results){
+						if (result.Contains("warning")){
+							warnings.AppendLine(result);
+						}else if (result.Contains("error")){
+							errors.AppendLine(result);
 						}
 					}
 					
