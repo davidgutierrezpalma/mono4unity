@@ -28,13 +28,22 @@ public class Mono4UnityEditorWindow : EditorWindow {
 	#endregion
 
 	#region protected class properties
+	protected static readonly string EditorPath = 
+	Application.dataPath	+ Path.DirectorySeparatorChar + 
+	"Mono4Unity"			+ Path.DirectorySeparatorChar + 
+	"Editor"				+ Path.DirectorySeparatorChar +
+	"Scripts"				+ Path.DirectorySeparatorChar;
+	
+	protected static readonly string EditorDll = 
+	"Editor" + Path.DirectorySeparatorChar + "Mono4Unity-Editor.dll";
+
 	protected static readonly string MonoPath = 
 	Application.dataPath	+ Path.DirectorySeparatorChar + 
 	"Mono4Unity"			+ Path.DirectorySeparatorChar + 
 	"Runtime"				+ Path.DirectorySeparatorChar;
 
 	protected static readonly string MonoDll = 
-	"Mono4Unity.dll";
+	"Mono4Unity-Runtime.dll";
 
 	protected static readonly string PlayerPrefs_BuildBasePath = 
 	"BuildBasePath";
@@ -104,16 +113,39 @@ public class Mono4UnityEditorWindow : EditorWindow {
 					StringBuilder errors = new StringBuilder();
 					this._compiling = true;
 
+					string editorDll = new FileInfo(
+						this.BuildPath + 
+						Path.DirectorySeparatorChar + 
+						Mono4UnityEditorWindow.EditorDll
+					).FullName;
+
 					string monoDll = new FileInfo(
 						this.BuildPath + 
 						Path.DirectorySeparatorChar + 
 						Mono4UnityEditorWindow.MonoDll
 					).FullName;
 
+					string unityEditorDll = 
+						EditorApplication.applicationContentsPath + Path.DirectorySeparatorChar + 
+						(Application.platform == RuntimePlatform.OSXEditor ? "Frameworks" : "Data") +
+						Path.DirectorySeparatorChar + "Managed" +
+						Path.DirectorySeparatorChar + "UnityEditor.dll";
+					
+					string unityEngineDll = 
+						EditorApplication.applicationContentsPath + Path.DirectorySeparatorChar + 
+						(Application.platform == RuntimePlatform.OSXEditor ? "Frameworks" : "Data") +
+						Path.DirectorySeparatorChar + "Managed" +
+						Path.DirectorySeparatorChar + "UnityEngine.dll";
+
 					PlayerPrefs.SetString (
 						Mono4UnityEditorWindow.PlayerPrefs_BuildBasePath,
 						this.BuildPath
 					);
+
+					FileInfo editorDllFileInfo = new FileInfo(editorDll);
+					if (!editorDllFileInfo.Directory.Exists){
+						editorDllFileInfo.Directory.Create();
+					}
 
 					Debug.Log("Generating DLL...");
 					string[] results = EditorUtility.CompileCSharp(
@@ -121,6 +153,28 @@ public class Mono4UnityEditorWindow : EditorWindow {
 						new string[]{"System.dll", "mscorlib.dll"},
 						new string[0],
 						new FileInfo(monoDll).FullName
+					);
+					
+					foreach (string result in results){
+						if (result.Contains("warning")){
+							warnings.AppendLine(result);
+						}else if (result.Contains("error")){
+							errors.AppendLine(result);
+						}
+					}
+
+					results = EditorUtility.CompileCSharp(
+						this.GetSourceFiles(Mono4UnityEditorWindow.EditorPath),
+						new string[]{
+							"System.dll", 
+							"mscorlib.dll", 
+							monoDll, 
+							Mono4UnityEditorWindow.MonoDll,
+							unityEngineDll,
+							unityEditorDll,
+						},
+						new string[0],
+						new FileInfo(editorDll).FullName
 					);
 					
 					foreach (string result in results){
