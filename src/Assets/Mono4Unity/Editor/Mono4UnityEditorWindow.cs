@@ -43,7 +43,7 @@ public class Mono4UnityEditorWindow : EditorWindow {
 	"Runtime"				+ Path.DirectorySeparatorChar;
 
 	protected static readonly string MonoDll = 
-	"Mono4Unity-Runtime.dll";
+	"Mono4Unity.dll";
 
 	protected static readonly string PlayerPrefs_BuildBasePath = 
 	"BuildBasePath";
